@@ -11,13 +11,13 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=2">
 </head>
 <body>
 <a class="skip" href="#main" data-i="tabCameras">Skip</a>
 <header class="top">
   <div class="brand">
-    <h1 id="appTitle" data-i="appTitle">奧克蘭路況鏡頭</h1>
+    <h1><a href="#cams" id="homeLink" class="home" data-ia="homeAria"><span id="appTitle" data-i="appTitle">奧克蘭路況鏡頭</span></a></h1>
     <p class="tagline" data-i="tagline"></p>
   </div>
   <div class="controls">
@@ -32,6 +32,7 @@
 </header>
 <nav class="tabs" role="tablist" id="tabs">
   <button role="tab" id="t-cams" aria-controls="v-cams" data-view="cams"><span aria-hidden="true">📷</span> <span data-i="tabCameras"></span></button>
+  <button role="tab" id="t-fav" aria-controls="v-fav" data-view="fav"><span aria-hidden="true">★</span> <span data-i="tabFav"></span> <span class="badge" id="favBadge" hidden></span></button>
   <button role="tab" id="t-map" aria-controls="v-map" data-view="map"><span aria-hidden="true">🗺️</span> <span data-i="tabMap"></span></button>
   <button role="tab" id="t-events" aria-controls="v-events" data-view="events"><span aria-hidden="true">⚠️</span> <span data-i="tabEvents"></span> <span class="badge" id="evBadge" hidden></span></button>
   <button role="tab" id="t-traffic" aria-controls="v-traffic" data-view="traffic"><span aria-hidden="true">🚗</span> <span data-i="tabTraffic"></span></button>
@@ -47,6 +48,10 @@
     <p class="note" id="nearNote" hidden></p>
     <p class="status" id="camStatus" role="status" aria-live="polite"></p>
     <div id="camList" class="camlist"></div>
+  </section>
+  <section id="v-fav" role="tabpanel" aria-labelledby="t-fav" class="view" hidden>
+    <h2 data-i="favTitle"></h2>
+    <div id="favList"></div>
   </section>
   <section id="v-map" role="tabpanel" aria-labelledby="t-map" class="view" hidden>
     <fieldset class="layers"><legend data-i="layers"></legend>
@@ -81,6 +86,26 @@
     <button type="button" class="more" id="rwMore" hidden></button>
   </section>
 </main>
+<div id="viewer" class="viewer" role="dialog" aria-modal="true" aria-labelledby="vTitle" aria-describedby="vHint" hidden>
+  <div class="vbar">
+    <div class="vhead"><h2 id="vTitle"></h2><p id="vMeta"></p></div>
+    <button type="button" id="vClose" class="vbtn vclose" data-ia="close">✕</button>
+  </div>
+  <div id="vStage" class="vstage" role="group" tabindex="0" data-ia="zoomArea">
+    <img id="vImg" alt="" draggable="false">
+    <p id="vMsg" class="vmsg" hidden></p>
+  </div>
+  <div class="vfoot">
+    <p class="ts" id="vTs" aria-live="polite"></p>
+    <div class="vzoom" role="group" data-ia="zoomGroup">
+      <button type="button" id="vZoomOut" class="vbtn" data-ia="zoomOut">−</button>
+      <span id="vZoomLvl" class="vlvl">100%</span>
+      <button type="button" id="vZoomIn" class="vbtn" data-ia="zoomIn">+</button>
+      <button type="button" id="vFit" class="vbtn vfit" data-i="zoomFit"></button>
+    </div>
+    <p id="vHint" class="vhint" data-i="viewerHint"></p>
+  </div>
+</div>
 <footer class="foot">
   <h2 data-i="srcTitle"></h2>
   <p data-i="attribNZTA"></p>
@@ -91,7 +116,7 @@
   <p data-i="disclaimer"></p>
 </footer>
 <script src="vendor/leaflet/leaflet.js"></script>
-<script src="assets/i18n.js"></script>
-<script src="assets/app.js"></script>
+<script src="assets/i18n.js?v=2"></script>
+<script src="assets/app.js?v=2"></script>
 </body>
 </html>

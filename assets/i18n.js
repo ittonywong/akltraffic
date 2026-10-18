@@ -9,6 +9,7 @@ window.LANGS = [
 ];
 window.I18N = {
 'zh-Hant': {
+  tabFav: '最愛', homeAria: '奧克蘭路況鏡頭（返回主頁）', enlargeAria: '放大相片：{name}', close: '關閉', zoomIn: '放大', zoomOut: '縮細', zoomFit: '符合畫面', zoomArea: '相片（可以縮放）', zoomGroup: '縮放', viewerHint: '兩隻手指拉開可以放大（電腦用滑鼠滾輪或 +／−）。撳 ✕、Esc 或者返回鍵關閉。相片每 60 秒自動更新。', favBrowse: '去睇全部鏡頭',
   appTitle: '奧克蘭路況鏡頭', tagline: '高速公路鏡頭・封路・塞車・道路工程', langLabel: '語言',
   fontGroup: '字體大小', fontSmaller: '細啲字', fontReset: '預設字體', fontLarger: '大啲字',
   tabCameras: '鏡頭', tabMap: '地圖', tabEvents: '封路／事故', tabTraffic: '塞車', tabRoadworks: '道路工程',
@@ -40,6 +41,7 @@ window.I18N = {
   privacy: '私隱：「我的最愛」同設定只儲喺你部手機（localStorage）；位置唔會儲存或傳送。',
 },
 'zh-Hans': {
+  tabFav: '收藏', homeAria: '奥克兰路况镜头（返回首页）', enlargeAria: '放大图片：{name}', close: '关闭', zoomIn: '放大', zoomOut: '缩小', zoomFit: '适合屏幕', zoomArea: '图片（可缩放）', zoomGroup: '缩放', viewerHint: '双指张开可放大（电脑用鼠标滚轮或 +／−）。点 ✕、Esc 或返回键关闭。图片每 60 秒自动更新。', favBrowse: '查看全部镜头',
   appTitle: '奥克兰路况镜头', tagline: '高速公路镜头・封路・拥堵・道路工程', langLabel: '语言',
   fontGroup: '字体大小', fontSmaller: '缩小字体', fontReset: '默认字体', fontLarger: '放大字体',
   tabCameras: '镜头', tabMap: '地图', tabEvents: '封路／事故', tabTraffic: '拥堵', tabRoadworks: '道路工程',
@@ -71,9 +73,10 @@ window.I18N = {
   privacy: '隐私：「我的收藏」和设置只保存在你的手机（localStorage）；位置不会保存或发送。',
 },
 en: {
+  tabFav: 'Favour\u00ADites', homeAria: 'Auckland Traffic Cameras (back to home)', enlargeAria: 'Enlarge photo: {name}', close: 'Close', zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomFit: 'Fit', zoomArea: 'Photo (zoomable)', zoomGroup: 'Zoom', viewerHint: 'Pinch to zoom (on a computer use the mouse wheel or + / −). Close with ✕, Esc or Back. The photo refreshes every 60 seconds.', favBrowse: 'Browse all cameras',
   appTitle: 'Auckland Traffic Cameras', tagline: 'Motorway cameras · closures · congestion · roadworks', langLabel: 'Language',
   fontGroup: 'Text size', fontSmaller: 'Smaller text', fontReset: 'Default text size', fontLarger: 'Larger text',
-  tabCameras: 'Cameras', tabMap: 'Map', tabEvents: 'Closures', tabTraffic: 'Traffic', tabRoadworks: 'Roadworks',
+  tabCameras: 'Cameras', tabMap: 'Map', tabEvents: 'Closures', tabTraffic: 'Traffic', tabRoadworks: 'Road\u00ADworks',
   searchLabel: 'Search cameras', searchPh: 'Search a place or highway, e.g. Rosedale, SH16', clear: 'Clear',
   fAll: 'All', fFav: '★ Favourites', fNear: '📍 Nearby',
   favTitle: 'My favourites', noFavs: 'No favourite cameras yet. Tap “☆ Add to favourites” under a camera to save it on this device.', addFav: '☆ Add to favourites', removeFav: '★ Favourite', favAria: 'Add or remove favourite: {name}',
@@ -102,6 +105,7 @@ en: {
   privacy: 'Privacy: favourites and settings are stored only on your device (localStorage); your location is never stored or sent.',
 },
 ja: {
+  tabFav: 'お気に入り', homeAria: 'オークランド交通カメラ（ホームに戻る）', enlargeAria: '写真を拡大: {name}', close: '閉じる', zoomIn: '拡大', zoomOut: '縮小', zoomFit: '全体表示', zoomArea: '写真（拡大縮小できます）', zoomGroup: 'ズーム', viewerHint: '2本指で広げると拡大します（パソコンはマウスホイールまたは + / −）。✕、Esc、戻るボタンで閉じます。写真は60秒ごとに更新されます。', favBrowse: 'すべてのカメラを見る',
   appTitle: 'オークランド交通カメラ', tagline: '高速道路カメラ・通行止め・渋滞・道路工事', langLabel: '言語',
   fontGroup: '文字サイズ', fontSmaller: '文字を小さく', fontReset: '標準の文字サイズ', fontLarger: '文字を大きく',
   tabCameras: 'カメラ', tabMap: '地図', tabEvents: '通行止め', tabTraffic: '渋滞', tabRoadworks: '道路工事',
@@ -133,6 +137,7 @@ ja: {
   privacy: 'プライバシー: お気に入りと設定はこの端末（localStorage）にのみ保存されます。位置情報は保存・送信されません。',
 },
 mi: {
+  tabFav: 'Makau', homeAria: 'Ngā Kāmera Huarahi o Tāmaki (hoki ki te kāinga)', enlargeAria: 'Whakanui ake te whakaahua: {name}', close: 'Kati', zoomIn: 'Whakanui', zoomOut: 'Whakaiti', zoomFit: 'Kia uru', zoomArea: 'Whakaahua (ka taea te whakanui)', zoomGroup: 'Topa', viewerHint: 'Kōwhera ōu matimati e rua hei whakanui (i te rorohiko, whakamahia te wīra kiore, te + / − rānei). Katia mā te ✕, te Esc, te Hoki rānei. Ka whakahōuhia te whakaahua ia 60 hēkona.', favBrowse: 'Tirohia ngā kāmera katoa',
   appTitle: 'Ngā Kāmera Huarahi o Tāmaki', tagline: 'Ngā kāmera huarahi matua · ngā katinga · te kōpiri waka · ngā mahi huarahi', langLabel: 'Reo',
   fontGroup: 'Te rahi o te tuhi', fontSmaller: 'Tuhi iti ake', fontReset: 'Te rahi taunoa', fontLarger: 'Tuhi rahi ake',
   tabCameras: 'Kāmera', tabMap: 'Mahere', tabEvents: 'Katinga', tabTraffic: 'Waka', tabRoadworks: 'Mahi huarahi',
@@ -164,6 +169,7 @@ mi: {
   privacy: 'Tūmataiti: ka penapenatia ō makau me ō tautuhinga ki tō pūrere anake (localStorage); kāore rawa tō wāhi e penapenatia, e tukuna rānei.',
 },
 ko: {
+  tabFav: '즐겨찾기', homeAria: '오클랜드 교통 카메라 (홈으로)', enlargeAria: '사진 확대: {name}', close: '닫기', zoomIn: '확대', zoomOut: '축소', zoomFit: '전체 보기', zoomArea: '사진 (확대/축소 가능)', zoomGroup: '확대/축소', viewerHint: '두 손가락으로 벌려 확대하세요 (컴퓨터는 마우스 휠 또는 + / −). ✕, Esc 또는 뒤로 버튼으로 닫습니다. 사진은 60초마다 새로고침됩니다.', favBrowse: '전체 카메라 보기',
   appTitle: '오클랜드 교통 카메라', tagline: '고속도로 카메라 · 통제 · 정체 · 도로 공사', langLabel: '언어',
   fontGroup: '글자 크기', fontSmaller: '글자 작게', fontReset: '기본 글자 크기', fontLarger: '글자 크게',
   tabCameras: '카메라', tabMap: '지도', tabEvents: '통제·사고', tabTraffic: '정체', tabRoadworks: '도로 공사',

@@ -48,7 +48,7 @@
     document.querySelectorAll('[data-ia]').forEach(function (el) { var v = T(el.getAttribute('data-ia')); el.setAttribute('aria-label', v); el.title = v; });
     document.querySelectorAll('[data-iph]').forEach(function (el) { el.placeholder = T(el.getAttribute('data-iph')); });
     $('fontGroup').setAttribute('aria-label', T('fontGroup')); $('lang').setAttribute('aria-label', T('langLabel'));
-    renderChips(); renderCams(); renderEvents(); renderTraffic(); renderRoadworks(); renderLegends(); if (S.map) refreshMapLayers();
+    renderChips(); renderCams(); renderFavs(); renderEvents(); renderTraffic(); renderRoadworks(); renderLegends(); if (S.map) refreshMapLayers();
   }
   function applyFont() {
     document.documentElement.style.fontSize = (16 * FONT_LEVELS[S.font]) + 'px';
@@ -74,13 +74,13 @@
   function isFav(id) { return S.favs.indexOf(id) >= 0; }
   function toggleFav(id) { if (isFav(id)) S.favs = S.favs.filter(function (x) { return x !== id; }); else S.favs.push(id); lsSet(LS.favs, S.favs);
     document.querySelectorAll('[data-fav="' + id + '"]').forEach(function (b) { favBtnState(b, id); });
-    if (S.filter === 'fav') renderCams(); renderChips(); }
+    renderFavs(); }
   function favBtnState(b, id) { var on = isFav(id); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? T('removeFav') : T('addFav'); }
 
   // ---------- cameras ----------
   function camById(id) { for (var i = 0; i < S.cams.length; i++) if (S.cams[i].id === id) return S.cams[i]; return null; }
   function renderChips() {
-    var c = $('chips'); var items = [['all', T('fAll')], ['fav', T('fFav') + (S.favs.length ? ' (' + S.favs.length + ')' : '')], ['near', T('fNear')]];
+    var c = $('chips'); var items = [['all', T('fAll')], ['near', T('fNear')]];
     HW_ORDER.forEach(function (h) { items.push([h, h]); });
     c.setAttribute('aria-label', T('searchLabel'));
     c.innerHTML = items.map(function (it) { return '<button type="button" class="chip" data-f="' + it[0] + '" aria-pressed="' + (S.filter === it[0]) + '">' + esc(it[1]) + '</button>'; }).join('');
@@ -93,7 +93,7 @@
     return '<article class="cam" data-id="' + cam.id + '">' +
       '<h3><span class="hw" aria-hidden="true">' + esc(cam.highway) + '</span>' + esc(cam.name) + '</h3>' +
       '<div class="meta">' + esc(dirT(cam.direction)) + ' · ' + esc(cam.description) + (dist != null ? ' · <span class="dist">' + esc(T('kmAway', { d: dist.toFixed(1) })) + '</span>' : '') + ' ' + tags + '</div>' +
-      '<figure class="camimg" data-cam="' + cam.id + '"><span>' + esc(T('loadingImg')) + '</span></figure>' +
+      '<figure class="camimg zoomable" data-cam="' + cam.id + '" role="button" tabindex="0" aria-label="' + esc(T('enlargeAria', { name: cam.name })) + '"><span>' + esc(T('loadingImg')) + '</span></figure>' +
       '<p class="ts" data-ts="' + cam.id + '"></p>' +
       '<div class="actions"><button type="button" class="btn" data-fav="' + cam.id + '" aria-pressed="' + isFav(cam.id) + '" aria-label="' + esc(T('favAria', { name: cam.name })) + '">' + esc(isFav(cam.id) ? T('removeFav') : T('addFav')) + '</button>' +
       '<button type="button" class="btn" data-onmap="' + cam.id + '">' + esc(T('showOnMap')) + '</button></div></article>';
@@ -107,9 +107,6 @@
       $('nearNote').textContent = T('privacyLoc') + (S.locMsg ? ' — ' + S.locMsg : '');
       if (S.pos) { var withD = list.map(function (c) { return [c, haversine(S.pos.lat, S.pos.lon, c.lat, c.lon)]; }).sort(function (a, b) { return a[1] - b[1]; }).slice(0, NEAR_N);
         html = '<section class="group near"><h2>' + esc(T('nearTitle')) + '</h2><div class="grid">' + withD.map(function (x) { return camCard(x[0], x[1]); }).join('') + '</div></section>'; }
-    } else if (S.filter === 'fav') {
-      var favs = S.favs.map(camById).filter(function (c) { return c && matchQ(c); });
-      html = '<section class="group fav"><h2>' + esc(T('favTitle')) + '</h2>' + (favs.length ? '<div class="grid">' + favs.map(function (c) { return camCard(c); }).join('') + '</div>' : '<p class="note">' + esc(T('noFavs')) + '</p>') + '</section>';
     } else {
       HW_ORDER.concat(S.cams.map(function (c) { return c.highway; }).filter(function (h, i, a) { return HW_ORDER.indexOf(h) < 0 && a.indexOf(h) === i; })).forEach(function (h) {
         if (S.filter !== 'all' && S.filter !== h) return;
@@ -123,9 +120,18 @@
     st.textContent = T('camCount', { n: shown }) + (shown !== S.cams.length ? ' / ' + S.cams.length : '') + ' · ' + T('autoRefresh');
     el.innerHTML = html; observeCards();
   }
+  function renderFavs() {
+    var el = $('favList'); if (!el) return; var b = $('favBadge');
+    b.hidden = !S.favs.length; b.textContent = S.favs.length;
+    var favs = S.favs.map(camById).filter(Boolean);
+    if (!S.cams.length) { el.innerHTML = '<p class="status">' + esc(S.camErr ? T('loadError') : T('loading')) + '</p>'; return; }
+    el.innerHTML = favs.length ? '<p class="status">' + esc(T('camCount', { n: favs.length }) + ' · ' + T('autoRefresh')) + '</p><div class="grid">' + favs.map(function (c) { return camCard(c); }).join('') + '</div>'
+      : '<div class="empty"><p class="big" aria-hidden="true">☆</p><p>' + esc(T('noFavs')) + '</p><button type="button" class="btn" id="favGoCams">' + esc(T('favBrowse')) + '</button></div>';
+    observeCards();
+  }
   function loadCams() {
-    return getJSON('/cameras').then(function (j) { S.cams = j.cameras || []; S.camsAt = j.fetchedAt; S.camErr = false; renderCams(); if (S.map) refreshMapLayers(); },
-      function () { S.camErr = true; renderCams(); setTimeout(loadCams, 30000); });
+    return getJSON('/cameras').then(function (j) { S.cams = j.cameras || []; S.camsAt = j.fetchedAt; S.camErr = false; renderCams(); renderFavs(); if (S.map) refreshMapLayers(); },
+      function () { S.camErr = true; renderCams(); renderFavs(); setTimeout(loadCams, 30000); });
   }
 
   // ---------- camera images: unchanged bytes, timestamp from NZTA Last-Modified, refresh 60 s while visible ----------
@@ -154,6 +160,7 @@
         img.alt = T('imgAlt', { name: cam.name, dir: dirT(cam.direction) }); if (img.src !== st.url) img.src = st.url; }
       else if (st.err && !fig.querySelector('img')) fig.innerHTML = '<span>' + esc(T('imgError')) + '</span>';
     });
+    if (S.viewerCam === id) paintViewer();
     paintTs(id);
   }
   function paintTs(id) {
@@ -172,13 +179,14 @@
   }, { rootMargin: '200px 0px' }) : null;
   function observeCards() {
     S.visible.forEach(function (el) { if (!document.body.contains(el)) S.visible.delete(el); });
-    document.querySelectorAll('#camList [data-cam]').forEach(function (f) { var id = +f.getAttribute('data-cam'); if (S.imgState[id] && S.imgState[id].url) paintImg(id); if (io) io.observe(f); else maybeLoad(id); });
+    document.querySelectorAll('#camList [data-cam], #favList [data-cam]').forEach(function (f) { var id = +f.getAttribute('data-cam'); if (S.imgState[id] && S.imgState[id].url) paintImg(id); if (io) io.observe(f); else maybeLoad(id); });
   }
   function maybeLoad(id) { var st = S.imgState[id]; if (document.hidden) return; if (!st || (!st.loading && Date.now() - (st.at || 0) > REFRESH_MS - 3000)) enqueue(id); }
   function refreshVisible() {
     if (document.hidden) return;
     var ids = {}; S.visible.forEach(function (el) { if (document.body.contains(el) && !el.closest('[hidden]')) ids[el.getAttribute('data-cam')] = 1; });
     if (S.popupCam) ids[S.popupCam] = 1;
+    if (S.viewerCam) ids[S.viewerCam] = 1;
     Object.keys(ids).forEach(function (id) { maybeLoad(+id); });
   }
   setInterval(refreshVisible, 5000);   // checks every 5 s; each image is re-fetched only when it is ~60 s old
@@ -281,7 +289,7 @@
   }
   function camPopup(cam) {
     return '<div class="pop" data-popcam="' + cam.id + '"><h3><span class="hw" aria-hidden="true">' + esc(cam.highway) + '</span>' + esc(cam.name) + '</h3><div class="note">' + esc(dirT(cam.direction)) + '</div>' +
-      '<figure class="camimg" data-cam="' + cam.id + '"><span>' + esc(T('loadingImg')) + '</span></figure><p class="ts" data-ts="' + cam.id + '"></p>' +
+      '<figure class="camimg zoomable" data-cam="' + cam.id + '" role="button" tabindex="0" aria-label="' + esc(T('enlargeAria', { name: cam.name })) + '"><span>' + esc(T('loadingImg')) + '</span></figure><p class="ts" data-ts="' + cam.id + '"></p>' +
       '<button type="button" class="btn" data-fav="' + cam.id + '" aria-pressed="' + isFav(cam.id) + '">' + esc(isFav(cam.id) ? T('removeFav') : T('addFav')) + '</button></div>';
   }
   function refreshMapLayers() {
@@ -316,13 +324,74 @@
     }, 80);
   }
 
+
+  // ---------- full-screen photo viewer (display scaling only; image bytes never altered; opens fit-contain) ----------
+  var V = { s: 1, x: 0, y: 0, ptrs: {}, pinch: null, pan: null, opener: null, pushed: false, lastTap: 0 };
+  var VMAX = 5;
+  function vApply() { var img = $('vImg'); img.style.transform = 'translate(' + V.x + 'px,' + V.y + 'px) scale(' + V.s + ')';
+    $('vZoomOut').disabled = V.s <= 1; $('vZoomIn').disabled = V.s >= VMAX; $('vFit').disabled = V.s === 1; $('vZoomLvl').textContent = Math.round(V.s * 100) + '%'; }
+  function vClamp() { var st = $('vStage').getBoundingClientRect(); var mx = st.width * (V.s - 1) / 2, my = st.height * (V.s - 1) / 2;
+    V.x = Math.max(-mx, Math.min(mx, V.x)); V.y = Math.max(-my, Math.min(my, V.y)); }
+  function vZoomAt(ns, cx, cy) { ns = Math.max(1, Math.min(VMAX, ns)); var st = $('vStage').getBoundingClientRect();
+    var ox = (cx == null ? st.width / 2 : cx - st.left) - st.width / 2, oy = (cy == null ? st.height / 2 : cy - st.top) - st.height / 2;
+    V.x = ox - (ox - V.x) * ns / V.s; V.y = oy - (oy - V.y) * ns / V.s; V.s = ns; if (ns === 1) { V.x = 0; V.y = 0; } vClamp(); vApply(); }
+  function paintViewer() { var id = S.viewerCam; if (!id) return; var st = S.imgState[id] || {}, cam = camById(id) || { name: '', direction: '', highway: '' };
+    var img = $('vImg'); $('vTitle').textContent = cam.name; $('vMeta').textContent = [cam.highway, dirT(cam.direction), cam.description].filter(Boolean).join(' · ');
+    img.alt = T('imgAlt', { name: cam.name, dir: dirT(cam.direction) });
+    if (st.url) { if (img.src !== st.url) img.src = st.url; img.hidden = false; $('vMsg').hidden = true; }
+    else { img.hidden = true; img.removeAttribute('src'); $('vMsg').hidden = false; $('vMsg').textContent = st.err ? T('imgError') : T('loadingImg'); } }
+  function openViewer(id, opener) {
+    if (!camById(id)) return; S.viewerCam = id; V.opener = opener || document.activeElement; V.s = 1; V.x = 0; V.y = 0;
+    var dlg = $('viewer'); $('vTs').setAttribute('data-ts', id); dlg.hidden = false; document.body.classList.add('noscroll');
+    document.querySelectorAll('body > :not(#viewer)').forEach(function (el) { if (!el.hasAttribute('inert')) { el.setAttribute('inert', ''); el.setAttribute('data-vinert', ''); } });
+    paintViewer(); paintTs(id); vApply(); maybeLoad(id);
+    try { history.pushState({ akltViewer: id }, ''); V.pushed = true; } catch (e) { V.pushed = false; }
+    setTimeout(function () { $('vClose').focus(); }, 0);
+  }
+  function closeViewer(fromPop) {
+    if (!S.viewerCam) return; S.viewerCam = null; $('viewer').hidden = true; document.body.classList.remove('noscroll'); $('vTs').removeAttribute('data-ts');
+    document.querySelectorAll('[data-vinert]').forEach(function (el) { el.removeAttribute('inert'); el.removeAttribute('data-vinert'); });
+    if (!fromPop && V.pushed) { V.pushed = false; V.ignorePop = true; history.back(); } V.pushed = false;
+    if (V.opener && document.body.contains(V.opener)) try { V.opener.focus(); } catch (e) {}
+  }
+  window.addEventListener('popstate', function () { if (V.ignorePop) { V.ignorePop = false; return; } if (S.viewerCam) { V.pushed = false; closeViewer(true); } });
+  function initViewer() {
+    var stage = $('vStage');
+    $('vClose').addEventListener('click', function () { closeViewer(false); });
+    $('vZoomIn').addEventListener('click', function () { vZoomAt(V.s * 1.5); });
+    $('vZoomOut').addEventListener('click', function () { vZoomAt(V.s / 1.5); });
+    $('vFit').addEventListener('click', function () { vZoomAt(1); });
+    $('viewer').addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeViewer(false); return; }
+      if (e.key === '+' || e.key === '=') { vZoomAt(V.s * 1.5); return; } if (e.key === '-') { vZoomAt(V.s / 1.5); return; } if (e.key === '0') { vZoomAt(1); return; }
+      if (e.key === 'Tab') { var f = [].slice.call($('viewer').querySelectorAll('button:not([disabled]), [tabindex="0"]')); if (!f.length) return;
+        var i = f.indexOf(document.activeElement); if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); } }
+      if (V.s > 1 && /^Arrow/.test(e.key) && document.activeElement === stage) { e.preventDefault(); var d = 40; if (e.key === 'ArrowLeft') V.x += d; if (e.key === 'ArrowRight') V.x -= d; if (e.key === 'ArrowUp') V.y += d; if (e.key === 'ArrowDown') V.y -= d; vClamp(); vApply(); }
+    });
+    stage.addEventListener('wheel', function (e) { e.preventDefault(); vZoomAt(V.s * (e.deltaY < 0 ? 1.2 : 1 / 1.2), e.clientX, e.clientY); }, { passive: false });
+    stage.addEventListener('pointerdown', function (e) { stage.setPointerCapture && stage.setPointerCapture(e.pointerId); V.ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(V.ptrs);
+      if (ids.length === 2) { var a = V.ptrs[ids[0]], b = V.ptrs[ids[1]]; V.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: V.s }; V.pan = null; }
+      else if (ids.length === 1) { V.pan = { x: e.clientX, y: e.clientY, ox: V.x, oy: V.y };
+        var now = Date.now(); if (now - V.lastTap < 300) { vZoomAt(V.s > 1 ? 1 : 2.5, e.clientX, e.clientY); V.lastTap = 0; } else V.lastTap = now; } });
+    stage.addEventListener('pointermove', function (e) { if (!V.ptrs[e.pointerId]) return; V.ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; var ids = Object.keys(V.ptrs);
+      if (ids.length === 2 && V.pinch) { var a = V.ptrs[ids[0]], b = V.ptrs[ids[1]]; vZoomAt(V.pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / V.pinch.d, (a.x + b.x) / 2, (a.y + b.y) / 2); }
+      else if (V.pan && V.s > 1) { V.x = V.pan.ox + e.clientX - V.pan.x; V.y = V.pan.oy + e.clientY - V.pan.y; vClamp(); vApply(); } });
+    function up(e) { delete V.ptrs[e.pointerId]; if (Object.keys(V.ptrs).length < 2) V.pinch = null; if (!Object.keys(V.ptrs).length) V.pan = null; }
+    stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+    window.addEventListener('resize', function () { if (S.viewerCam) { vClamp(); vApply(); } });
+  }
+  function goHome() {
+    if (S.viewerCam) closeViewer(false);
+    S.filter = 'all'; S.q = ''; $('q').value = ''; renderChips(); renderCams(); showView('cams'); window.scrollTo(0, 0);
+    var l = $('camList'); if (l) l.scrollTop = 0;
+  }
   // ---------- events wiring ----------
   function init() {
     var saved = lsGet(LS.lang, null), nav = (navigator.language || '').toLowerCase();
     S.lang = saved && I18N[saved] ? saved : (/^zh-(cn|sg|hans)/.test(nav) ? 'zh-Hans' : /^zh/.test(nav) ? 'zh-Hant' : /^ja/.test(nav) ? 'ja' : /^ko/.test(nav) ? 'ko' : /^mi/.test(nav) ? 'mi' : /^en/.test(nav) ? 'en' : 'zh-Hant');
     S.font = lsGet(LS.font, 1); if (!(S.font >= 0 && S.font < FONT_LEVELS.length)) S.font = 1;
     S.favs = (lsGet(LS.favs, []) || []).filter(function (x) { return typeof x === 'number'; });
-    if (S.favs.length) S.filter = 'fav';
     $('lang').innerHTML = LANGS.map(function (l) { return '<option value="' + l.code + '" lang="' + l.html + '">' + esc(l.label) + '</option>'; }).join('');
     $('lang').value = S.lang;
     $('lang').addEventListener('change', function () { S.lang = this.value; lsSet(LS.lang, S.lang); applyLang(); });
@@ -336,7 +405,12 @@
     var qt; $('q').addEventListener('input', function () { var v = this.value; clearTimeout(qt); qt = setTimeout(function () { S.q = v.trim(); renderCams(); }, 150); });
     var rt; $('rq').addEventListener('input', function () { clearTimeout(rt); rt = setTimeout(function () { S.rwShown = RW_PAGE; renderRoadworks(); }, 150); });
     $('rwMore').addEventListener('click', function () { S.rwShown += RW_PAGE; renderRoadworks(); });
+    initViewer();
+    $('homeLink').addEventListener('click', function (e) { e.preventDefault(); goHome(); });
+    document.addEventListener('keydown', function (e) { var z = e.target.closest && e.target.closest('.zoomable'); if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openViewer(+z.getAttribute('data-cam'), z); } });
     document.addEventListener('click', function (e) {
+      var z = e.target.closest('.zoomable'); if (z) { openViewer(+z.getAttribute('data-cam'), z); return; }
+      if (e.target.closest('#favGoCams')) { goHome(); return; }
       var f = e.target.closest('[data-fav]'); if (f) { toggleFav(+f.getAttribute('data-fav')); return; }
       var m = e.target.closest('[data-onmap]'); if (m) { focusOnMap('cam', +m.getAttribute('data-onmap')); return; }
       var ev = e.target.closest('[data-evmap]'); if (ev) { focusOnMap('ev', ev.getAttribute('data-evmap')); return; }
@@ -344,7 +418,7 @@
     });
     ['lyCams', 'lyEvents', 'lyTraffic', 'lyRw'].forEach(function (id) { $(id).addEventListener('change', syncLayerToggles); });
     applyFont(); applyLang();
-    var h = (location.hash || '').slice(1); showView(['cams', 'map', 'events', 'traffic', 'rw'].indexOf(h) >= 0 ? h : 'cams');
+    var h = (location.hash || '').slice(1); showView(['cams', 'fav', 'map', 'events', 'traffic', 'rw'].indexOf(h) >= 0 ? h : (S.favs.length ? 'fav' : 'cams'));
     loadCams(); loadEvents(); loadJourneys();
     setInterval(function () { if (!document.hidden) loadCams(); }, 10 * 60000);
     setInterval(function () { if (!document.hidden) { loadEvents(); loadJourneys(); } }, 2 * 60000);
