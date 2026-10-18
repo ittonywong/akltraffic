@@ -1,0 +1,2 @@
+{ "name": "Auckland Traffic Cameras 奧克蘭路況鏡頭", "short_name": "AKL Traffic", "start_url": "./", "scope": "./", "display": "standalone",
+  "background_color": "#ffffff", "theme_color": "#0b5d7a", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }

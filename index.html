@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://tile.openstreetmap.org; connect-src 'self' https://akl-traffic-proxy.ytonywong.workers.dev http://127.0.0.1:8797; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="theme-color" content="#0b5d7a">
+<meta name="description" content="Auckland motorway traffic cameras, closures, congestion and roadworks — personal, free, six languages.">
+<title>奧克蘭路況鏡頭 · Auckland Traffic Cameras</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main" data-i="tabCameras">Skip</a>
+<header class="top">
+  <div class="brand">
+    <h1 id="appTitle" data-i="appTitle">奧克蘭路況鏡頭</h1>
+    <p class="tagline" data-i="tagline"></p>
+  </div>
+  <div class="controls">
+    <label class="lang"><span class="sr" data-i="langLabel">語言</span>
+      <select id="lang" aria-describedby="appTitle"></select></label>
+    <div class="font" role="group" id="fontGroup">
+      <button type="button" id="fMinus" data-ia="fontSmaller">A−</button>
+      <button type="button" id="fReset" data-ia="fontReset">A</button>
+      <button type="button" id="fPlus" data-ia="fontLarger">A+</button>
+    </div>
+  </div>
+</header>
+<nav class="tabs" role="tablist" id="tabs">
+  <button role="tab" id="t-cams" aria-controls="v-cams" data-view="cams"><span aria-hidden="true">📷</span> <span data-i="tabCameras"></span></button>
+  <button role="tab" id="t-map" aria-controls="v-map" data-view="map"><span aria-hidden="true">🗺️</span> <span data-i="tabMap"></span></button>
+  <button role="tab" id="t-events" aria-controls="v-events" data-view="events"><span aria-hidden="true">⚠️</span> <span data-i="tabEvents"></span> <span class="badge" id="evBadge" hidden></span></button>
+  <button role="tab" id="t-traffic" aria-controls="v-traffic" data-view="traffic"><span aria-hidden="true">🚗</span> <span data-i="tabTraffic"></span></button>
+  <button role="tab" id="t-rw" aria-controls="v-rw" data-view="rw"><span aria-hidden="true">🚧</span> <span data-i="tabRoadworks"></span></button>
+</nav>
+<main id="main">
+  <section id="v-cams" role="tabpanel" aria-labelledby="t-cams" class="view">
+    <div class="searchbar">
+      <label for="q" class="sr" data-i="searchLabel"></label>
+      <input id="q" type="search" autocomplete="off" enterkeyhint="search" data-iph="searchPh">
+    </div>
+    <div class="chips" id="chips" role="group"></div>
+    <p class="note" id="nearNote" hidden></p>
+    <p class="status" id="camStatus" role="status" aria-live="polite"></p>
+    <div id="camList" class="camlist"></div>
+  </section>
+  <section id="v-map" role="tabpanel" aria-labelledby="t-map" class="view" hidden>
+    <fieldset class="layers"><legend data-i="layers"></legend>
+      <label><input type="checkbox" id="lyCams" checked> <span data-i="layerCameras"></span></label>
+      <label><input type="checkbox" id="lyEvents" checked> <span data-i="layerEvents"></span></label>
+      <label><input type="checkbox" id="lyTraffic" checked> <span data-i="layerTraffic"></span></label>
+      <label><input type="checkbox" id="lyRw"> <span data-i="layerRoadworks"></span></label>
+    </fieldset>
+    <div id="map" role="region" data-ia="tabMap"></div>
+    <div class="legend" id="mapLegend"></div>
+    <p class="note" data-i="mapHint"></p>
+  </section>
+  <section id="v-events" role="tabpanel" aria-labelledby="t-events" class="view" hidden>
+    <h2 data-i="eventsTitle"></h2>
+    <p class="disclaimer" data-i="disclaimerEvents"></p>
+    <p class="status" id="evStatus" role="status" aria-live="polite"></p>
+    <div id="evList"></div>
+  </section>
+  <section id="v-traffic" role="tabpanel" aria-labelledby="t-traffic" class="view" hidden>
+    <h2 data-i="trafficTitle"></h2>
+    <div class="legend" id="trLegend"></div>
+    <p class="note" data-i="trafficNote"></p>
+    <p class="status" id="trStatus" role="status" aria-live="polite"></p>
+    <div id="trList"></div>
+  </section>
+  <section id="v-rw" role="tabpanel" aria-labelledby="t-rw" class="view" hidden>
+    <h2 data-i="rwTitle"></h2>
+    <p class="note" data-i="rwNote"></p>
+    <div class="searchbar"><label for="rq" class="sr" data-i="rwSearchPh"></label><input id="rq" type="search" autocomplete="off" data-iph="rwSearchPh"></div>
+    <p class="status" id="rwStatus" role="status" aria-live="polite"></p>
+    <div id="rwList"></div>
+    <button type="button" class="more" id="rwMore" hidden></button>
+  </section>
+</main>
+<footer class="foot">
+  <h2 data-i="srcTitle"></h2>
+  <p data-i="attribNZTA"></p>
+  <p data-i="disclaimerEvents"></p>
+  <p data-i="attribAT"></p>
+  <p data-i="attribOSM"></p>
+  <p data-i="privacy"></p>
+  <p data-i="disclaimer"></p>
+</footer>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
