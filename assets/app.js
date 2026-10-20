@@ -8,7 +8,7 @@
   var REFRESH_MS = 60000, OLD_IMG_MIN = 5, NEAR_N = 10, RW_PAGE = 40;
   var LS = { lang: 'akltraffic.lang', font: 'akltraffic.font', favs: 'akltraffic.favs' };
   var FONT_LEVELS = [0.875, 1, 1.125, 1.25, 1.4, 1.6];
-  var S = { lang: 'zh-Hant', font: 1, favs: [], cams: [], camsAt: null, filter: 'all', q: '', pos: null, view: 'cams',
+  var S = { lang: 'en', font: 1, favs: [], cams: [], camsAt: null, filter: 'all', area: null, place: null, q: '', pos: null, view: 'cams', suggestIdx: -1,
     events: null, journeys: null, roadworks: null, rwShown: RW_PAGE, imgState: {}, visible: new Set(), map: null, layers: {} };
   window.AKLT = S; // for tests / debugging
 
@@ -29,6 +29,31 @@
   function keyOf(s) { return String(s || '').replace(/[^A-Za-z]/g, ''); }
   function haversine(a, b, c, d) { var R = 6371, toR = Math.PI / 180, x = (c - a) * toR, y = (d - b) * toR;
     var h = Math.sin(x / 2) * Math.sin(x / 2) + Math.cos(a * toR) * Math.cos(c * toR) * Math.sin(y / 2) * Math.sin(y / 2); return 2 * R * Math.asin(Math.sqrt(h)); }
+
+  function camMeta(cam) {
+    var raw = (window.AKLT_CAM_AREA || {})[cam.id];
+    if (!raw && cam.id != null) raw = (window.AKLT_CAM_AREA || {})[String(cam.id)];
+    if (!raw) return { area: null, place: null };
+    var p = String(raw).split('|'); return { area: p[0] || null, place: p[1] || null };
+  }
+  function placeLabel(pid) {
+    var p = (window.AKLT_PLACES || {})[pid]; if (!p) return pid;
+    return p[S.lang] || p.en || pid;
+  }
+  function areaLabel(aid) {
+    var a = (window.AKLT_AREAS || {})[aid]; if (!a) return aid;
+    return a[S.lang] || a.en || aid;
+  }
+  function sortOrigin() {
+    if (S.place && window.AKLT_PLACES[S.place]) { var p = AKLT_PLACES[S.place]; return { lat: p.lat, lon: p.lon, kind: 'place' }; }
+    if (S.area && window.AKLT_AREAS[S.area]) { var a = AKLT_AREAS[S.area]; return { lat: a.lat, lon: a.lon, kind: 'area' }; }
+    return null;
+  }
+  function withDist(list, origin) {
+    return list.map(function (c) { return { cam: c, d: haversine(origin.lat, origin.lon, c.lat, c.lon) }; })
+      .sort(function (a, b) { return a.d - b.d; });
+  }
+
   function getJSON(path) {
     var ctl = new AbortController(); var t = setTimeout(function () { ctl.abort(); }, 45000);
     return fetch(API + path, { signal: ctl.signal, cache: 'no-store' }).then(function (r) {
@@ -80,33 +105,98 @@
   // ---------- cameras ----------
   function camById(id) { for (var i = 0; i < S.cams.length; i++) if (S.cams[i].id === id) return S.cams[i]; return null; }
   function renderChips() {
-    var c = $('chips'); var items = [['all', T('fAll')], ['near', T('fNear')]];
+    var c = $('chips');
+    var items = [['all', T('fAll')], ['near', T('fNear')]];
+    ['north', 'city', 'east', 'west', 'south'].forEach(function (a) { items.push(['area:' + a, areaLabel(a)]); });
     HW_ORDER.forEach(function (h) { items.push([h, h]); });
-    c.setAttribute('aria-label', T('searchLabel'));
-    c.innerHTML = items.map(function (it) { return '<button type="button" class="chip" data-f="' + it[0] + '" aria-pressed="' + (S.filter === it[0]) + '">' + esc(it[1]) + '</button>'; }).join('');
+    c.setAttribute('aria-label', T('areasLabel'));
+    var cur = chipKey();
+    c.innerHTML = items.map(function (it) {
+      var pressed = false, f = it[0];
+      if (f === 'all') pressed = (S.filter === 'all' && !S.area && !S.place);
+      else if (f === 'near') pressed = (S.filter === 'near');
+      else if (f.indexOf('area:') === 0) pressed = (S.area === f.slice(5) && S.filter !== 'near');
+      else if (HW_ORDER.indexOf(f) >= 0) pressed = (S.filter === f && !S.area && !S.place);
+      var cls = f.indexOf('area:') === 0 ? ' chip area' : '';
+      return '<button type="button" class="chip' + cls + '" data-f="' + f + '" aria-pressed="' + pressed + '">' + esc(it[1]) + '</button>';
+    }).join('');
+    renderPlaceChips();
   }
-  function matchQ(cam) { if (!S.q) return true; var q = S.q.toLowerCase();
-    return (cam.name + ' ' + cam.description + ' ' + cam.highway + ' ' + cam.direction + ' ' + dirT(cam.direction) + ' ' + cam.id).toLowerCase().indexOf(q) >= 0; }
+  function chipKey() {
+    if (S.place) return 'place:' + S.place;
+    if (S.area) return 'area:' + S.area;
+    return S.filter;
+  }
+  function renderPlaceChips() {
+    var el = $('placeChips'); if (!el) return;
+    if (!S.area || S.filter === 'near') { el.hidden = true; el.innerHTML = ''; return; }
+    var places = Object.keys(AKLT_PLACES).filter(function (pid) { return AKLT_PLACES[pid].area === S.area; });
+    // only places that have at least one loaded camera (or all known if cams not in yet)
+    var have = {};
+    S.cams.forEach(function (c) { var m = camMeta(c); if (m.place) have[m.place] = true; });
+    places = places.filter(function (pid) { return !S.cams.length || have[pid]; });
+    el.hidden = false;
+    el.setAttribute('aria-label', T('placesLabel'));
+    var html = '<button type="button" class="chip place" data-place="" aria-pressed="' + (!S.place) + '">' + esc(T('allPlaces')) + '</button>';
+    html += places.map(function (pid) {
+      return '<button type="button" class="chip place" data-place="' + pid + '" aria-pressed="' + (S.place === pid) + '">' + esc(placeLabel(pid)) + '</button>';
+    }).join('');
+    el.innerHTML = html;
+  }
+  function matchQ(cam) {
+    if (!S.q) return true;
+    var q = S.q.toLowerCase();
+    var m = camMeta(cam);
+    // Place/area display names only (not aliases — aliases are for autocomplete, so "Rosedale" still means the camera).
+    var pl = '';
+    if (m.place && AKLT_PLACES[m.place]) {
+      var p = AKLT_PLACES[m.place];
+      pl = placeLabel(m.place) + ' ' + (p.en || '');
+    }
+    var ar = m.area && AKLT_AREAS[m.area] ? areaLabel(m.area) + ' ' + (AKLT_AREAS[m.area].en || '') : '';
+    return (cam.name + ' ' + cam.description + ' ' + cam.highway + ' ' + cam.direction + ' ' + dirT(cam.direction) + ' ' + cam.id + ' ' + pl + ' ' + ar).toLowerCase().indexOf(q) >= 0;
+  }
   function sortHw(list, h) { return list.slice().sort(function (a, b) { return (h === 'SH1' || h === 'SH18') ? b.lat - a.lat : a.lon - b.lon; }); }
   function camCard(cam, dist) {
     var tags = (cam.offline ? '<span class="tag off">' + esc(T('offline')) + '</span>' : '') + (cam.underMaintenance ? '<span class="tag off">' + esc(T('maintenance')) + '</span>' : '');
-    return '<article class="cam" data-id="' + cam.id + '">' +
+    var m = camMeta(cam);
+    var where = (m.place ? placeLabel(m.place) : '') + (m.area ? (m.place ? ' · ' : '') + areaLabel(m.area) : '');
+    return '<article class="cam" data-id="' + cam.id + '"' + (m.area ? ' data-area="' + m.area + '"' : '') + (m.place ? ' data-place="' + m.place + '"' : '') + '>' +
       '<h3><span class="hw" aria-hidden="true">' + esc(cam.highway) + '</span>' + esc(cam.name) + '</h3>' +
-      '<div class="meta">' + esc(dirT(cam.direction)) + ' · ' + esc(cam.description) + (dist != null ? ' · <span class="dist">' + esc(T('kmAway', { d: dist.toFixed(1) })) + '</span>' : '') + ' ' + tags + '</div>' +
+      '<div class="meta">' + esc(dirT(cam.direction)) + ' · ' + esc(cam.description) + (where ? ' · ' + esc(where) : '') + (dist != null ? ' · <span class="dist">' + esc(T('kmAway', { d: dist.toFixed(1) })) + '</span>' : '') + ' ' + tags + '</div>' +
       '<figure class="camimg zoomable" data-cam="' + cam.id + '" role="button" tabindex="0" aria-label="' + esc(T('enlargeAria', { name: cam.name })) + '"><span>' + esc(T('loadingImg')) + '</span></figure>' +
       '<p class="ts" data-ts="' + cam.id + '"></p>' +
       '<div class="actions"><button type="button" class="btn" data-fav="' + cam.id + '" aria-pressed="' + isFav(cam.id) + '" aria-label="' + esc(T('favAria', { name: cam.name })) + '">' + esc(isFav(cam.id) ? T('removeFav') : T('addFav')) + '</button>' +
       '<button type="button" class="btn" data-onmap="' + cam.id + '">' + esc(T('showOnMap')) + '</button></div></article>';
   }
+  function filterCams() {
+    var list = S.cams.filter(matchQ);
+    if (S.place) list = list.filter(function (c) { return camMeta(c).place === S.place; });
+    else if (S.area) list = list.filter(function (c) { return camMeta(c).area === S.area; });
+    else if (S.filter !== 'all' && S.filter !== 'near' && HW_ORDER.indexOf(S.filter) >= 0)
+      list = list.filter(function (c) { return c.highway === S.filter; });
+    return list;
+  }
   function renderCams() {
     var el = $('camList'); if (!el) return; var st = $('camStatus');
     if (!S.cams.length) { st.textContent = S.camErr ? T('loadError') : T('loading'); st.classList.toggle('err', !!S.camErr); el.innerHTML = ''; return; }
-    var list = S.cams.filter(matchQ), html = '';
+    var list = filterCams(), html = '';
     $('nearNote').hidden = S.filter !== 'near';
+    var origin = sortOrigin();
+    $('areaNote').hidden = !(origin && S.filter !== 'near');
+    if (origin && S.filter !== 'near') $('areaNote').textContent = T('areaNote');
     if (S.filter === 'near') {
       $('nearNote').textContent = T('privacyLoc') + (S.locMsg ? ' — ' + S.locMsg : '');
       if (S.pos) { var withD = list.map(function (c) { return [c, haversine(S.pos.lat, S.pos.lon, c.lat, c.lon)]; }).sort(function (a, b) { return a[1] - b[1]; }).slice(0, NEAR_N);
         html = '<section class="group near"><h2>' + esc(T('nearTitle')) + '</h2><div class="grid">' + withD.map(function (x) { return camCard(x[0], x[1]); }).join('') + '</div></section>'; }
+    } else if (origin) {
+      var ranked = withDist(list, origin);
+      if (!ranked.length) html = '<p class="note">' + esc(T('noAreaCams')) + '</p>';
+      else {
+        var title = S.place ? placeLabel(S.place) : areaLabel(S.area);
+        html = '<section class="group near"><h2>' + esc(title) + ' · ' + esc(T('groupCount', { n: ranked.length })) + '</h2><div class="grid">' +
+          ranked.map(function (x) { return camCard(x.cam, x.d); }).join('') + '</div></section>';
+      }
     } else {
       HW_ORDER.concat(S.cams.map(function (c) { return c.highway; }).filter(function (h, i, a) { return HW_ORDER.indexOf(h) < 0 && a.indexOf(h) === i; })).forEach(function (h) {
         if (S.filter !== 'all' && S.filter !== h) return;
@@ -383,13 +473,67 @@
   }
   function goHome() {
     if (S.viewerCam) closeViewer(false);
-    S.filter = 'all'; S.q = ''; $('q').value = ''; renderChips(); renderCams(); showView('cams'); window.scrollTo(0, 0);
+    S.filter = 'all'; S.area = null; S.place = null; S.q = ''; $('q').value = '';
+    hideSuggest(); renderChips(); renderCams(); showView('cams'); window.scrollTo(0, 0);
     var l = $('camList'); if (l) l.scrollTop = 0;
   }
+  function setArea(aid) {
+    S.filter = 'all'; S.area = aid; S.place = null; hideSuggest(); renderChips(); renderCams();
+  }
+  function setPlace(pid) {
+    if (!pid) { S.place = null; hideSuggest(); renderChips(); renderCams(); return; }
+    var p = AKLT_PLACES[pid]; if (!p) return;
+    S.filter = 'all'; S.area = p.area; S.place = pid; S.q = ''; $('q').value = '';
+    hideSuggest(); renderChips(); renderCams();
+  }
+  function hideSuggest() {
+    var s = $('suggest'); if (!s) return; s.hidden = true; s.innerHTML = ''; S.suggestIdx = -1;
+    $('q').setAttribute('aria-expanded', 'false');
+  }
+  function placeSearchBlob(pid) {
+    var p = AKLT_PLACES[pid]; if (!p) return '';
+    var labels = [p.en, p['zh-Hant'], p['zh-Hans'], p.ja, p.mi, p.ko].concat(p.aliases || []);
+    return labels.join(' ').toLowerCase();
+  }
+  function buildSuggestions(q) {
+    q = (q || '').trim().toLowerCase(); if (q.length < 1) return [];
+    var out = [], seen = {};
+    Object.keys(AKLT_PLACES).forEach(function (pid) {
+      if (placeSearchBlob(pid).indexOf(q) >= 0) { out.push({ type: 'place', id: pid, label: placeLabel(pid), sub: areaLabel(AKLT_PLACES[pid].area) }); seen[pid] = 1; }
+    });
+    // also match English official names when UI is translated
+    S.cams.forEach(function (c) {
+      var blob = (c.name + ' ' + c.description + ' ' + c.highway).toLowerCase();
+      if (blob.indexOf(q) >= 0) out.push({ type: 'cam', id: c.id, label: c.name, sub: c.highway + (camMeta(c).place ? ' · ' + placeLabel(camMeta(c).place) : '') });
+    });
+    return out.slice(0, 12);
+  }
+  function renderSuggest(items) {
+    var s = $('suggest'); if (!s) return;
+    if (!items.length) { hideSuggest(); return; }
+    S.suggestIdx = 0;
+    s.hidden = false; $('q').setAttribute('aria-expanded', 'true');
+    s.innerHTML = items.map(function (it, i) {
+      var kind = it.type === 'place' ? T('suggestPlace') : T('suggestCam');
+      return '<li role="option" id="sg-' + i + '"><button type="button" data-sg="' + i + '" aria-selected="' + (i === 0) + '"><span class="sg-main">' + esc(it.label) + '</span><span class="sg-sub">' + esc(kind + ' · ' + it.sub) + '</span></button></li>';
+    }).join('');
+    s._items = items;
+  }
+  function applySuggestion(it) {
+    if (!it) return;
+    if (it.type === 'place') setPlace(it.id);
+    else if (it.type === 'cam') {
+      var m = camMeta({ id: it.id }); S.filter = 'all'; S.area = m.area; S.place = m.place; S.q = ''; $('q').value = '';
+      hideSuggest(); renderChips(); renderCams();
+      setTimeout(function () { var el = document.querySelector('#camList [data-id="' + it.id + '"]'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+    }
+  }
+
   // ---------- events wiring ----------
   function init() {
-    var saved = lsGet(LS.lang, null), nav = (navigator.language || '').toLowerCase();
-    S.lang = saved && I18N[saved] ? saved : (/^zh-(cn|sg|hans)/.test(nav) ? 'zh-Hans' : /^zh/.test(nav) ? 'zh-Hant' : /^ja/.test(nav) ? 'ja' : /^ko/.test(nav) ? 'ko' : /^mi/.test(nav) ? 'mi' : /^en/.test(nav) ? 'en' : 'zh-Hant');
+    var saved = lsGet(LS.lang, null);
+    // First visit defaults to English; a chosen language is remembered in localStorage.
+    S.lang = saved && I18N[saved] ? saved : 'en';
     S.font = lsGet(LS.font, 1); if (!(S.font >= 0 && S.font < FONT_LEVELS.length)) S.font = 1;
     S.favs = (lsGet(LS.favs, []) || []).filter(function (x) { return typeof x === 'number'; });
     $('lang').innerHTML = LANGS.map(function (l) { return '<option value="' + l.code + '" lang="' + l.html + '">' + esc(l.label) + '</option>'; }).join('');
@@ -401,14 +545,47 @@
     $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[role=tab]'); if (b) showView(b.getAttribute('data-view')); });
     $('tabs').addEventListener('keydown', function (e) { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; var tabs = [].slice.call(document.querySelectorAll('#tabs [role=tab]'));
       var i = tabs.indexOf(document.activeElement); if (i < 0) return; var n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); showView(n.getAttribute('data-view')); });
-    $('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (!b) return; S.filter = b.getAttribute('data-f'); renderChips(); if (S.filter === 'near' && !S.pos) locate(); renderCams(); });
-    var qt; $('q').addEventListener('input', function () { var v = this.value; clearTimeout(qt); qt = setTimeout(function () { S.q = v.trim(); renderCams(); }, 150); });
+    $('chips').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-f]'); if (!b) return;
+      var f = b.getAttribute('data-f');
+      if (f.indexOf('area:') === 0) { setArea(f.slice(5)); return; }
+      S.area = null; S.place = null; S.filter = f; hideSuggest(); renderChips();
+      if (S.filter === 'near' && !S.pos) locate(); renderCams();
+    });
+    $('placeChips').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-place]'); if (!b) return;
+      setPlace(b.getAttribute('data-place') || null);
+    });
+    var qt; $('q').addEventListener('input', function () {
+      var v = this.value; clearTimeout(qt);
+      qt = setTimeout(function () {
+        S.q = v.trim();
+        renderSuggest(buildSuggestions(v));
+        renderCams();
+      }, 120);
+    });
+    $('q').addEventListener('keydown', function (e) {
+      var s = $('suggest'); if (!s || s.hidden || !s._items) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); S.suggestIdx = Math.min(S.suggestIdx + 1, s._items.length - 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); S.suggestIdx = Math.max(S.suggestIdx - 1, 0); }
+      else if (e.key === 'Enter' && S.suggestIdx >= 0) { e.preventDefault(); applySuggestion(s._items[S.suggestIdx]); return; }
+      else if (e.key === 'Escape') { hideSuggest(); return; }
+      else return;
+      [].forEach.call(s.querySelectorAll('[data-sg]'), function (btn) {
+        var on = +btn.getAttribute('data-sg') === S.suggestIdx; btn.setAttribute('aria-selected', String(on)); if (on) btn.scrollIntoView({ block: 'nearest' });
+      });
+    });
+    $('suggest').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-sg]'); if (!b) return;
+      applySuggestion(($('suggest')._items || [])[+b.getAttribute('data-sg')]);
+    });
     var rt; $('rq').addEventListener('input', function () { clearTimeout(rt); rt = setTimeout(function () { S.rwShown = RW_PAGE; renderRoadworks(); }, 150); });
     $('rwMore').addEventListener('click', function () { S.rwShown += RW_PAGE; renderRoadworks(); });
     initViewer();
     $('homeLink').addEventListener('click', function (e) { e.preventDefault(); goHome(); });
     document.addEventListener('keydown', function (e) { var z = e.target.closest && e.target.closest('.zoomable'); if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openViewer(+z.getAttribute('data-cam'), z); } });
     document.addEventListener('click', function (e) {
+      if (!e.target.closest('.suggest-wrap')) hideSuggest();
       var z = e.target.closest('.zoomable'); if (z) { openViewer(+z.getAttribute('data-cam'), z); return; }
       if (e.target.closest('#favGoCams')) { goHome(); return; }
       var f = e.target.closest('[data-fav]'); if (f) { toggleFav(+f.getAttribute('data-fav')); return; }

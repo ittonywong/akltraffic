@@ -12,11 +12,12 @@ button,select,input{font:inherit;color:inherit}
   padding-top:max(.6rem,env(safe-area-inset-top))}
 .brand h1{font-size:1.25rem;margin:0;line-height:1.2}
 .tagline{margin:.1rem 0 0;font-size:.8rem;opacity:.9}
-.controls{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
-.lang select{background:#fff;color:var(--tx);border:0;border-radius:.4rem;padding:.35rem .4rem;min-height:2.5rem;max-width:9.5rem}
-.font{display:flex;border-radius:.4rem;overflow:hidden;border:1px solid rgba(255,255,255,.6)}
-.font button{background:transparent;color:#fff;border:0;min-width:2.6rem;min-height:2.5rem;font-weight:700;cursor:pointer}
-.font button+button{border-left:1px solid rgba(255,255,255,.6)}
+.controls{display:flex;gap:.3rem;align-items:center;flex-wrap:nowrap;flex:0 1 auto;max-width:100%}
+.lang{flex:0 1 auto;min-width:0}
+.lang select{background:#fff;color:var(--tx);border:0;border-radius:.35rem;padding:.25rem .3rem;min-height:2.1rem;max-width:8.2rem;font-size:.85rem}
+.font{display:flex;border-radius:.35rem;overflow:hidden;border:1px solid rgba(255,255,255,.55);flex:0 0 auto}
+.font button{background:transparent;color:#fff;border:0;min-width:1.85rem;min-height:2.1rem;padding:0 .2rem;font-weight:700;font-size:.85rem;cursor:pointer;line-height:1}
+.font button+button{border-left:1px solid rgba(255,255,255,.55)}
 .font button[aria-pressed=true]{background:#fff;color:var(--pri)}
 .tabs{display:flex;position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none}
 /* tab bar: 6 tabs must fit at 360 px in all languages, also at A+; labels grow only slightly with A+ and may wrap to 2 lines */
@@ -112,3 +113,16 @@ body.noscroll{overflow:hidden}
 .vfit{font-size:.9rem;padding:0 .7rem}.vclose{flex:0 0 auto}
 .vlvl{min-width:3.2rem;text-align:center;font-size:.9rem}
 .vhint{font-size:.78rem;color:#c9d4da;margin:.3rem 0 0}
+
+.suggest-wrap{position:relative}
+.suggest{position:absolute;left:0;right:0;top:100%;z-index:40;margin:.2rem 0 0;padding:.25rem 0;list-style:none;background:#fff;border:1px solid var(--bd);border-radius:.5rem;box-shadow:0 6px 18px rgba(0,0,0,.12);max-height:min(50vh,22rem);overflow:auto}
+.suggest[hidden]{display:none!important}
+.suggest li{margin:0}
+.suggest button{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;width:100%;text-align:left;border:0;background:none;padding:.55rem .75rem;cursor:pointer;min-height:2.6rem}
+.suggest button:hover,.suggest button[aria-selected=true]{background:var(--pri-l)}
+.suggest .sg-main{font-weight:600}
+.suggest .sg-sub{font-size:.8rem;color:var(--mut)}
+.chips.places{margin-top:0}
+.chip.area{font-weight:600}
+.chip.place{background:var(--pri-l);border-color:var(--pri)}
+.chip.place[aria-pressed=true]{background:var(--pri);color:#fff}
